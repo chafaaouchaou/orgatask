@@ -230,70 +230,229 @@ Cette documentation liste toutes les routes disponibles dans l'application OrgaT
 ---
 
 ## 🔌 API REST (Endpoints)
+### 1. Inscription
+**Créer un nouveau compte utilisateur**
 
-### 🛡️ **Authentification API**
+```http
+POST /api/register
+Content-Type: application/json
 
-| Route | Méthode | Chemin | Description |
-|-------|---------|---------|-------------|
-| `api_login_check` | POST | `/api/login_check` | Connexion JWT |
-| `api_register` | POST | `/api/register` | Inscription utilisateur |
-| `api_me` | GET | `/api/me` | Profil utilisateur connecté |
+{
+  "name": "John Doe",
+  "email": "john@example.com",
+  "password": "monmotdepasse"
+}
+```
 
-### 📋 **API Tâches**
+**Réponse attendue :**
+- Status: `200` ou `201`
+- Body: `{"message": "...", "user": {...}}`
 
-#### Via API Platform (Format JSON-LD)
+### 2. Connexion
+**Obtenir un token JWT**
 
-| Route | Méthode | Chemin | Description |
-|-------|---------|---------|-------------|
-| `_api_/tasks{._format}_get_collection` | GET | `/api/tasks.{_format}` | Liste des tâches (JSON-LD) |
-| `_api_/tasks{._format}_post` | POST | `/api/tasks.{_format}` | Créer une tâche (JSON-LD) |
-| `_api_/tasks/{id}{._format}_get` | GET | `/api/tasks/{id}.{_format}` | Détails d'une tâche (JSON-LD) |
-| `_api_/tasks/{id}{._format}_put` | PUT | `/api/tasks/{id}.{_format}` | Modifier une tâche (JSON-LD) |
-| `_api_/tasks/{id}{._format}_delete` | DELETE | `/api/tasks/{id}.{_format}` | Supprimer une tâche (JSON-LD) |
+```http
+POST /api/login_check
+Content-Type: application/json
 
-#### Via Contrôleur Personnalisé
+{
+  "username": "john@example.com",
+  "password": "monmotdepasse"
+}
+```
 
-| Route | Méthode | Chemin | Description |
-|-------|---------|---------|-------------|
-| `api_tasks_list` | GET | `/api/tasks` | Liste des tâches |
-| `api_tasks_get` | GET | `/api/tasks/{id}` | Détails d'une tâche |
-| `api_tasks_create` | POST | `/api/tasks` | Créer une tâche |
-| `api_tasks_update` | PUT | `/api/tasks/{id}` | Modifier une tâche |
-| `api_tasks_delete` | DELETE | `/api/tasks/{id}` | Supprimer une tâche |
+**Réponse attendue :**
+- Status: `200`
+- Body: `{"token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9..."}`
 
-### 👥 **API Utilisateurs**
+### 3. Profil utilisateur
+**Récupérer les informations de l'utilisateur connecté**
 
-| Route | Méthode | Chemin | Description |
-|-------|---------|---------|-------------|
-| `_api_/users{._format}_get_collection` | GET | `/api/users.{_format}` | Liste des utilisateurs |
-| `_api_/users/{id}{._format}_get` | GET | `/api/users/{id}.{_format}` | Détails d'un utilisateur |
-| `_api_/users{._format}_post` | POST | `/api/users.{_format}` | Créer un utilisateur |
-| `_api_/users/{id}{._format}_put` | PUT | `/api/users/{id}.{_format}` | Modifier un utilisateur |
-| `_api_/users/{id}{._format}_delete` | DELETE | `/api/users/{id}.{_format}` | Supprimer un utilisateur |
-| `api_users_search` | GET | `/api/users/search` | Recherche d'utilisateurs |
+```http
+GET /api/me
+Authorization: Bearer {{jwt_token}}
+```
+
+**Réponse attendue :**
+- Status: `200`
+- Body: `{"user": {"id": 1, "name": "John Doe", "email": "john@example.com"}}`
 
 ---
 
-## 🔧 **Routes Techniques**
+## 📋 Gestion des tâches
 
-### 📚 **API Platform**
+### 1. Lister toutes les tâches
+**Récupérer la liste des tâches**
 
-| Route | Méthode | Chemin | Description |
-|-------|---------|---------|-------------|
-| `api_doc` | GET | `/api/docs.{_format}` | Documentation API |
-| `api_entrypoint` | GET | `/api/{index}.{_format}` | Point d'entrée de l'API |
-| `api_jsonld_context` | GET | `/api/contexts/{shortName}.{_format}` | Contexte JSON-LD |
-| `api_genid` | GET | `/api/.well-known/genid/{id}` | Génération d'ID |
-| `api_validation_errors` | GET | `/api/validation_errors/{id}` | Erreurs de validation |
+```http
+GET /api/tasks
+Authorization: Bearer {{jwt_token}}
+```
 
-### 🚨 **Gestion des Erreurs**
+**Réponse attendue :**
+- Status: `200`
+- Body: `{"data": [...], "pagination": {"current_page": 1, "total_pages": 1}}`
 
-| Route | Méthode | Chemin | Description |
-|-------|---------|---------|-------------|
-| `_api_errors` | GET | `/api/errors/{status}.{_format}` | Erreurs API |
-| `_api_validation_errors_problem` | GET | `/api/validation_errors/{id}` | Erreurs de validation (Problem) |
-| `_api_validation_errors_hydra` | GET | `/api/validation_errors/{id}` | Erreurs de validation (Hydra) |
-| `_api_validation_errors_jsonapi` | GET | `/api/validation_errors/{id}` | Erreurs de validation (JSON API) |
-| `_preview_error` | ANY | `/_error/{code}.{_format}` | Prévisualisation d'erreur |
+### 2. Lister avec filtres
+**Récupérer les tâches avec filtres et pagination**
 
+```http
+GET /api/tasks?status=todo&page=1&limit=5&order=desc
+Authorization: Bearer {{jwt_token}}
+```
 
+**Paramètres disponibles :**
+- `status` : Filtrer par statut (todo, in_progress, done)
+- `page` : Numéro de page (défaut: 1)
+- `limit` : Nombre d'éléments par page (défaut: 10)
+- `order` : Ordre de tri (asc, desc)
+
+### 3. Créer une tâche
+**Créer une nouvelle tâche**
+
+```http
+POST /api/tasks
+Authorization: Bearer {{jwt_token}}
+Content-Type: application/json
+
+{
+  "title": "Nouvelle tâche API",
+  "description": "Description de la tâche créée via API",
+  "status": "todo",
+  "dueDate": "2024-12-31T23:59:59+00:00"
+}
+```
+
+**Réponse attendue :**
+- Status: `201`
+- Body: `{"message": "...", "data": {"id": 1, "title": "...", ...}}`
+
+### 4. Créer une tâche avec utilisateurs assignés
+**Créer une tâche et l'assigner à des utilisateurs**
+
+```http
+POST /api/tasks
+Authorization: Bearer {{jwt_token}}
+Content-Type: application/json
+
+{
+  "title": "Tâche avec utilisateurs assignés",
+  "description": "Cette tâche sera assignée à des utilisateurs",
+  "status": "todo",
+  "dueDate": "2024-12-31T23:59:59+00:00",
+  "assignedUsers": [
+    {"id": 1}
+  ]
+}
+```
+
+### 5. Récupérer une tâche par ID
+**Obtenir les détails d'une tâche spécifique**
+
+```http
+GET /api/tasks/{{task_id}}
+Authorization: Bearer {{jwt_token}}
+```
+
+**Réponse attendue :**
+- Status: `200`
+- Body: `{"data": {"id": 1, "title": "...", "status": "...", ...}}`
+
+### 6. Modifier une tâche
+**Mettre à jour une tâche existante**
+
+```http
+PUT /api/tasks/{{task_id}}
+Authorization: Bearer {{jwt_token}}
+Content-Type: application/json
+
+{
+  "title": "Tâche mise à jour",
+  "description": "Description mise à jour via API",
+  "status": "in_progress"
+}
+```
+
+**Réponse attendue :**
+- Status: `200`
+- Body: `{"message": "...", "data": {"status": "in_progress", ...}}`
+
+### 7. Supprimer une tâche
+**Supprimer une tâche**
+
+```http
+DELETE /api/tasks/{{task_id}}
+Authorization: Bearer {{jwt_token}}
+```
+
+**Réponse attendue :**
+- Status: `200`
+- Body: `{"message": "Tâche supprimée avec succès"}`
+
+---
+
+## 👥 Gestion des utilisateurs
+
+### 1. Lister tous les utilisateurs
+**Récupérer la liste des utilisateurs**
+
+```http
+GET /api/users
+Authorization: Bearer {{jwt_token}}
+```
+
+**Réponse attendue :**
+- Status: `200`
+- Body: `[{"id": 1, "name": "John Doe", "email": "john@example.com"}, ...]`
+
+### 2. Rechercher des utilisateurs
+**Rechercher des utilisateurs par nom**
+
+```http
+GET /api/users/search?q=John
+Authorization: Bearer {{jwt_token}}
+```
+
+**Réponse attendue :**
+- Status: `200`
+- Body: `{"users": [{"id": 1, "name": "John Doe", ...}]}`
+
+---
+
+## ⚠️ Gestion des erreurs
+
+### 1. Accès non autorisé
+**Test sans token d'autorisation**
+
+```http
+GET /api/tasks
+# Pas de header Authorization
+```
+
+**Réponse attendue :**
+- Status: `401`
+- Message: Unauthorized
+
+### 2. Token invalide
+**Test avec un token invalide**
+
+```http
+GET /api/tasks
+Authorization: Bearer invalid_token
+```
+
+**Réponse attendue :**
+- Status: `401`
+- Message: Invalid token
+
+### 3. Ressource non trouvée
+**Test avec un ID de tâche inexistant**
+
+```http
+GET /api/tasks/99999
+Authorization: Bearer {{jwt_token}}
+```
+
+**Réponse attendue :**
+- Status: `404`
+- Body: `{"message": "Tâche non trouvée"}`
