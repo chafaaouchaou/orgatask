@@ -1,0 +1,230 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Gestion des tâches{% endblock %}
+
+{% block stylesheets %}
+    <link href="{{ asset('css/task.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block javascripts %}
+    <script src="{{ asset('js/task.js') }}"></script>
+{% endblock %}
+
+{% block body %}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Mes tâches</h1>
+        <a href="{{ path('app_task_new') }}" class="btn btn-primary">Créer une nouvelle tâche</a>
+    </div>
+
+    {% for flash_success in app.flashes('success') %}
+        <div class="alert alert-success" role="alert">{{ flash_success }}</div>
+    {% endfor %}
+
+    <!-- Filtres -->
+    <div class="task-filters">
+        <!-- Bouton de réinitialisation -->
+        <div class="row mb-3">
+            <div class="col-12 text-center">
+                <a href="{{ path('app_task') }}" class="btn btn-outline-secondary btn-sm">
+                    🔄 Réinitialiser tous les filtres
+                </a>
+            </div>
+        </div>
+        
+        <!-- Première ligne de filtres -->
+        <div class="row">
+            <!-- Filtre par statut -->
+            <div class="col-md-6">
+                <div class="filter-section">
+                    <h6>Filtrer par statut :</h6>
+                    <div class="btn-group" role="group">
+                        <a href="{{ path('app_task', app.request.query.all|merge({'status': 'all'})) }}" 
+                           class="btn btn-sm btn-outline-secondary {{ current_status == 'all' ? 'active' : '' }}">
+                            Tous
+                        </a>
+                        <a href="{{ path('app_task', app.request.query.all|merge({'status': 'todo'})) }}" 
+                           class="btn btn-sm btn-outline-secondary {{ current_status == 'todo' ? 'active' : '' }}">
+                            À faire
+                        </a>
+                        <a href="{{ path('app_task', app.request.query.all|merge({'status': 'in_progress'})) }}" 
+                           class="btn btn-sm btn-outline-warning {{ current_status == 'in_progress' ? 'active' : '' }}">
+                            En cours
+                        </a>
+                        <a href="{{ path('app_task', app.request.query.all|merge({'status': 'done'})) }}" 
+                           class="btn btn-sm btn-outline-success {{ current_status == 'done' ? 'active' : '' }}">
+                            Terminé
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Tri par date d'échéance -->
+            <div class="col-md-6">
+                <div class="filter-section">
+                    <h6>Trier par date d'échéance :</h6>
+                    <div class="sort-controls">
+                        <select id="order-select" class="form-control form-control-sm">
+                            <option value="asc" {{ current_order == 'asc' ? 'selected' : '' }}>Croissant (plus ancien en premier)</option>
+                            <option value="desc" {{ current_order == 'desc' ? 'selected' : '' }}>Décroissant (plus récent en premier)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row">
+            <!-- Filtre par créateur -->
+            <div class="col-md-6">
+                <div class="filter-section">
+                    <h6>Filtrer par créateur :</h6>
+                    <div class="user-search-container">
+                        <input type="text" id="created-by-search" class="form-control form-control-sm" 
+                               placeholder="Rechercher un créateur..." 
+                               value="{{ current_created_by and current_created_by != '-1' ? (users|filter(u => u.id == current_created_by)|first).name : '' }}">
+                        <div id="created-by-dropdown" class="user-dropdown">
+                            <div class="user-item" data-user-id="-1">
+                                <strong>Tous les créateurs</strong>
+                            </div>
+                            {% for user in users %}
+                                <div class="user-item" data-user-id="{{ user.id }}">
+                                    {{ user.name }} ({{ user.email }})
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Filtre par utilisateur assigné -->
+            <div class="col-md-6">
+                <div class="filter-section">
+                    <h6>Filtrer par utilisateur assigné :</h6>
+                    <div class="user-search-container">
+                        <input type="text" id="assigned-to-search" class="form-control form-control-sm" 
+                               placeholder="Rechercher un utilisateur assigné..." 
+                               value="{{ current_assigned_to and current_assigned_to != '-1' ? (users|filter(u => u.id == current_assigned_to)|first).name : '' }}">
+                        <div id="assigned-to-dropdown" class="user-dropdown">
+                            <div class="user-item" data-user-id="-1">
+                                <strong>Tous les utilisateurs</strong>
+                            </div>
+                            {% for user in users %}
+                                <div class="user-item" data-user-id="{{ user.id }}">
+                                    {{ user.name }} ({{ user.email }})
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if tasks|length > 0 %}
+        <div class="row">
+            {% for task in tasks %}
+                <div class="col-md-6 col-lg-4 mb-4">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">{{ task.title }}</h5>
+                            <p class="card-text">{{ task.description ? task.description|slice(0, 100) ~ '...' : 'Pas de description' }}</p>
+                            
+                            <div class="mb-2">
+                                <span class="badge 
+                                    {% if task.status == 'todo' %}badge-secondary
+                                    {% elseif task.status == 'in_progress' %}badge-warning
+                                    {% elseif task.status == 'done' %}badge-success
+                                    {% endif %}">
+                                    {% if task.status == 'todo' %}À faire
+                                    {% elseif task.status == 'in_progress' %}En cours
+                                    {% elseif task.status == 'done' %}Terminé
+                                    {% endif %}
+                                </span>
+                                
+                                {% if task.dueDate %}
+                                    <span class="badge 
+                                        {% if task.dueDate < date() and task.status != 'done' %}badge-danger
+                                        {% elseif task.dueDate < date('+3 days') and task.status != 'done' %}badge-warning
+                                        {% else %}badge-info
+                                        {% endif %}">
+                                        {% if task.dueDate < date() and task.status != 'done' %}
+                                            ⚠️ En retard
+                                        {% elseif task.dueDate < date('+3 days') and task.status != 'done' %}
+                                            ⏰ Urgent
+                                        {% else %}
+                                             {{ task.dueDate|date('d/m/Y') }}
+                                        {% endif %}
+                                    </span>
+                                {% endif %}
+                            </div>
+                            
+                            {% if task.assignedUsers|length > 0 %}
+                                <div class="assigned-users">
+                                    <small class="text-muted">Assigné à :</small>
+                                    {% for user in task.assignedUsers %}
+                                        <span class="badge badge-info">{{ user.name }}</span>
+                                    {% endfor %}
+                                </div>
+                            {% else %}
+                                <div class="assigned-users">
+                                    <small class="text-muted">Non assigné</small>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+        
+        <!-- Pagination -->
+        {% if pagination.total_pages > 1 %}
+            <div class="pagination-container">
+                <nav aria-label="Pagination des tâches">
+                    <ul class="pagination">
+                        {% if pagination.has_previous %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ path('app_task', app.request.query.all|merge({'page': pagination.current_page - 1})) }}">
+                                    Précédent
+                                </a>
+                            </li>
+                        {% endif %}
+                        
+                        {% for page in 1..pagination.total_pages %}
+                            {% if page == pagination.current_page %}
+                                <li class="page-item active">
+                                    <span class="page-link">{{ page }}</span>
+                                </li>
+                            {% elseif page <= pagination.current_page + 2 and page >= pagination.current_page - 2 %}
+                                <li class="page-item">
+                                    <a class="page-link" href="{{ path('app_task', app.request.query.all|merge({'page': page})) }}">
+                                        {{ page }}
+                                    </a>
+                                </li>
+                            {% endif %}
+                        {% endfor %}
+                        
+                        {% if pagination.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ path('app_task', app.request.query.all|merge({'page': pagination.current_page + 1})) }}">
+                                    Suivant
+                                </a>
+                            </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+                
+                <div class="pagination-info">
+                    Affichage {{ (pagination.current_page - 1) * pagination.per_page + 1 }} - 
+                    {{ min(pagination.current_page * pagination.per_page, pagination.total_items) }} 
+                    sur {{ pagination.total_items }} tâches
+                </div>
+            </div>
+        {% endif %}
+    {% else %}
+        <div class="alert alert-info">
+            <h4>Aucune tâche trouvée</h4>
+            <p>Aucune tâche ne correspond à vos critères de recherche. <a href="{{ path('app_task_new') }}">Créer une nouvelle tâche</a></p>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

@@ -31,6 +31,13 @@ class Task
     #[ORM\ManyToMany(targetEntity: User::class, inversedBy: 'assignedTasks')]
     private Collection $assignedUsers;
 
+    #[ORM\Column(type: Types::DATETIME_MUTABLE, nullable: true)]
+    private ?\DateTimeInterface $dueDate = null;
+
+    #[ORM\ManyToOne(targetEntity: User::class)]
+    #[ORM\JoinColumn(nullable: true)]
+    private ?User $createdBy = null;
+
     public function __construct()
     {
         $this->assignedUsers = new ArrayCollection();
@@ -97,6 +104,30 @@ class Task
     public function removeAssignedUser(User $assignedUser): static
     {
         $this->assignedUsers->removeElement($assignedUser);
+
+        return $this;
+    }
+
+    public function getDueDate(): ?\DateTimeInterface
+    {
+        return $this->dueDate;
+    }
+
+    public function setDueDate(?\DateTimeInterface $dueDate): static
+    {
+        $this->dueDate = $dueDate;
+
+        return $this;
+    }
+
+    public function getCreatedBy(): ?User
+    {
+        return $this->createdBy;
+    }
+
+    public function setCreatedBy(?User $createdBy): static
+    {
+        $this->createdBy = $createdBy;
 
         return $this;
     }

@@ -1,0 +1,254 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Créer une nouvelle tâche{% endblock %}
+
+{% block body %}
+<div class="container">
+    <h1>Créer une nouvelle tâche</h1>
+
+    {{ form_start(form) }}
+        <div class="mb-3">
+            {{ form_label(form.title) }}
+            {{ form_widget(form.title) }}
+            {{ form_errors(form.title) }}
+        </div>
+
+        <div class="mb-3">
+            {{ form_label(form.description) }}
+            {{ form_widget(form.description) }}
+            {{ form_errors(form.description) }}
+        </div>
+
+        <div class="mb-3">
+            {{ form_label(form.status) }}
+            {{ form_widget(form.status) }}
+            {{ form_errors(form.status) }}
+        </div>
+
+        <div class="mb-3">
+            {{ form_label(form.dueDate) }}
+            {{ form_widget(form.dueDate) }}
+            {{ form_errors(form.dueDate) }}
+            <small class="form-text text-muted">Optionnel - Date limite pour cette tâche</small>
+        </div>
+
+        <div class="mb-3">
+            {{ form_label(form.assignedUsers) }}
+            <div class="user-search-container">
+                <!-- Barre de recherche principale -->
+                <div class="search-input-wrapper">
+                    <input type="text" id="user-search" class="form-control" 
+                           placeholder="Rechercher et sélectionner des utilisateurs..." 
+                           autocomplete="off">
+                    <div class="search-icon">🔍</div>
+                </div>
+                
+                <!-- Dropdown avec résultats -->
+                <div id="user-dropdown" class="user-dropdown">
+                    <div id="user-list" class="user-list">
+                        <!-- Les utilisateurs apparaîtront ici -->
+                    </div>
+                </div>
+                
+                <!-- Utilisateurs sélectionnés -->
+                <div id="selected-users" class="selected-users mt-2">
+                    <!-- Les utilisateurs sélectionnés apparaîtront ici -->
+                </div>
+                
+                <!-- Input caché pour le formulaire -->
+                {{ form_widget(form.assignedUsers, {'attr': {'style': 'display: none;'}}) }}
+            </div>
+            {{ form_errors(form.assignedUsers) }}
+        </div>
+
+        <div class="mb-3">
+            <button type="submit" class="btn btn-primary">Créer la tâche</button>
+            <a href="{{ path('app_task') }}" class="btn btn-secondary">Annuler</a>
+        </div>
+    {{ form_end(form) }}
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('user-search');
+    const dropdown = document.getElementById('user-dropdown');
+    const userList = document.getElementById('user-list');
+    const selectedUsersContainer = document.getElementById('selected-users');
+    const hiddenSelect = document.querySelector('select[name="task[assignedUsers][]"]');
+    
+    let selectedUsers = new Map(); // Map pour stocker les utilisateurs sélectionnés
+    let searchTimeout;
+    let isDropdownOpen = false;
+
+    // Charger les 10 premiers utilisateurs au focus
+    searchInput.addEventListener('focus', function() {
+        if (!isDropdownOpen) {
+            loadInitialUsers();
+            openDropdown();
+        }
+    });
+
+    // Recherche en temps réel
+    searchInput.addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        const query = this.value.trim();
+        
+        searchTimeout = setTimeout(() => {
+            if (query.length === 0) {
+                loadInitialUsers();
+            } else {
+                searchUsers(query);
+            }
+        }, 300);
+    });
+
+    // Fermer le dropdown si on clique ailleurs
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('.user-search-container')) {
+            closeDropdown();
+        }
+    });
+
+    function loadInitialUsers() {
+        fetch('/api/users/search?q=')
+            .then(response => response.json())
+            .then(users => {
+                displayUsers(users);
+            })
+            .catch(error => {
+                console.error('Erreur lors du chargement des utilisateurs:', error);
+            });
+    }
+
+    function searchUsers(query) {
+        fetch(`/api/users/search?q=${encodeURIComponent(query)}`)
+            .then(response => response.json())
+            .then(users => {
+                displayUsers(users);
+            })
+            .catch(error => {
+                console.error('Erreur lors de la recherche:', error);
+            });
+    }
+
+    function displayUsers(users) {
+        if (users.length === 0) {
+            userList.innerHTML = '<div class="no-results">Aucun utilisateur trouvé</div>';
+            return;
+        }
+
+        let html = '';
+        users.forEach(user => {
+            const isSelected = selectedUsers.has(user.id);
+            html += `
+                <div class="user-item ${isSelected ? 'selected' : ''}" 
+                     data-user-id="${user.id}" 
+                     data-user-name="${user.name}" 
+                     data-user-email="${user.email}">
+                    <div class="user-info">
+                        <div class="user-name">${user.name}</div>
+                        <div class="user-email">${user.email}</div>
+                    </div>
+                    <div class="user-checkbox">
+                        ${isSelected ? '✓' : ''}
+                    </div>
+                </div>
+            `;
+        });
+        userList.innerHTML = html;
+
+        // Ajouter les event listeners
+        userList.querySelectorAll('.user-item').forEach(item => {
+            item.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                toggleUserSelection(this);
+            });
+        });
+    }
+
+    function toggleUserSelection(userItem) {
+        const userId = parseInt(userItem.dataset.userId);
+        const userName = userItem.dataset.userName;
+        const userEmail = userItem.dataset.userEmail;
+
+        if (selectedUsers.has(userId)) {
+            // Désélectionner
+            selectedUsers.delete(userId);
+            userItem.classList.remove('selected');
+            userItem.querySelector('.user-checkbox').textContent = '';
+        } else {
+            // Sélectionner
+            selectedUsers.set(userId, {
+                id: userId,
+                name: userName,
+                email: userEmail
+            });
+            userItem.classList.add('selected');
+            userItem.querySelector('.user-checkbox').textContent = '✓';
+        }
+
+        updateSelectedUsersDisplay();
+        updateHiddenSelect();
+    }
+
+    function updateSelectedUsersDisplay() {
+        if (selectedUsers.size === 0) {
+            selectedUsersContainer.innerHTML = '';
+            return;
+        }
+
+        let html = '<div class="selected-users-label">Utilisateurs sélectionnés:</div>';
+        selectedUsers.forEach(user => {
+            html += `
+                <span class="selected-user-tag">
+                    ${user.name}
+                    <button type="button" class="remove-user" data-user-id="${user.id}">×</button>
+                </span>
+            `;
+        });
+        selectedUsersContainer.innerHTML = html;
+
+        // Ajouter event listeners pour supprimer
+        selectedUsersContainer.querySelectorAll('.remove-user').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const userId = parseInt(this.dataset.userId);
+                selectedUsers.delete(userId);
+                updateSelectedUsersDisplay();
+                updateHiddenSelect();
+                
+                // Mettre à jour l'affichage dans la liste
+                const userItem = userList.querySelector(`[data-user-id="${userId}"]`);
+                if (userItem) {
+                    userItem.classList.remove('selected');
+                    userItem.querySelector('.user-checkbox').textContent = '';
+                }
+            });
+        });
+    }
+
+    function updateHiddenSelect() {
+        // Effacer toutes les options
+        hiddenSelect.innerHTML = '';
+        
+        // Ajouter les utilisateurs sélectionnés
+        selectedUsers.forEach(user => {
+            const option = document.createElement('option');
+            option.value = user.id;
+            option.selected = true;
+            hiddenSelect.appendChild(option);
+        });
+    }
+
+    function openDropdown() {
+        dropdown.style.display = 'block';
+        isDropdownOpen = true;
+    }
+
+    function closeDropdown() {
+        dropdown.style.display = 'none';
+        isDropdownOpen = false;
+    }
+});
+</script>
+{% endblock %}
