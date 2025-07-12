@@ -1,0 +1,31 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Données{% endblock %}
+
+{% block body %}
+<div class="container">
+    <h1>Données brutes</h1>
+    
+    <h2>Utilisateurs</h2>
+    <ul>
+        {% for user in users %}
+            <li>{{ user.name }} - {{ user.email }}</li>
+        {% endfor %}
+    </ul>
+
+    <h2>Tâches</h2>
+    <ul>
+        {% for task in tasks %}
+            <li>
+                <strong>{{ task.title }}</strong> - {{ task.status }}
+                {% if task.assignedUsers|length > 0 %}
+                    <br>Assignée à : 
+                    {% for user in task.assignedUsers %}
+                        {{ user.name }}{% if not loop.last %}, {% endif %}
+                    {% endfor %}
+                {% endif %}
+            </li>
+        {% endfor %}
+    </ul>
+</div>
+{% endblock %}
