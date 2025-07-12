@@ -24,17 +24,6 @@ class DataController extends AbstractController
         ]);
     }
 
-    #[Route('/data/json', name: 'app_data_json')]
-    public function jsonData(EntityManagerInterface $entityManager): JsonResponse
-    {
-        $users = $entityManager->getRepository(User::class)->findAll();
-        $tasks = $entityManager->getRepository(Task::class)->findAll();
-
-        return new JsonResponse([
-            'users' => $users,
-            'tasks' => $tasks
-        ]);
-    }
 }
 
 

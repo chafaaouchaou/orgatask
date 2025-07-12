@@ -6,35 +6,45 @@ use App\Entity\User;
 use App\Entity\Task;
 use Doctrine\Bundle\FixturesBundle\Fixture;
 use Doctrine\Persistence\ObjectManager;
+use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 
 class AppFixtures extends Fixture
 {
+    private UserPasswordHasherInterface $passwordHasher;
+
+    public function __construct(UserPasswordHasherInterface $passwordHasher)
+    {
+        $this->passwordHasher = $passwordHasher;
+    }
+
     public function load(ObjectManager $manager): void
     {
-        // Créer des utilisateurs
+        // Créer des utilisateurs avec mots de passe hachés
         $user1 = new User();
         $user1->setEmail('john@example.com');
-        $user1->setPassword('password123');
+        $user1->setPassword($this->passwordHasher->hashPassword($user1, 'password123'));
         $user1->setName('John Doe');
         $manager->persist($user1);
 
         $user2 = new User();
         $user2->setEmail('jane@example.com');
-        $user2->setPassword('password456');
+        $user2->setPassword($this->passwordHasher->hashPassword($user2, 'password456'));
         $user2->setName('Jane Smith');
         $manager->persist($user2);
 
         $user3 = new User();
         $user3->setEmail('bob@example.com');
-        $user3->setPassword('password789');
+        $user3->setPassword($this->passwordHasher->hashPassword($user3, 'password789'));
         $user3->setName('Bob Johnson');
         $manager->persist($user3);
 
         $user4 = new User();
         $user4->setEmail('alice@example.com');
-        $user4->setPassword('passwordabc');
+        $user4->setPassword($this->passwordHasher->hashPassword($user4, 'passwordabc'));
         $user4->setName('Alice Brown');
         $manager->persist($user4);
+
+        // ...existing code...
 
         // Créer des tâches sans utilisateur assigné
         $task1 = new Task();
