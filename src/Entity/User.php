@@ -2,6 +2,12 @@
 
 namespace App\Entity;
 
+use ApiPlatform\Metadata\ApiResource;
+use ApiPlatform\Metadata\Get;
+use ApiPlatform\Metadata\GetCollection;
+use ApiPlatform\Metadata\Post;
+use ApiPlatform\Metadata\Put;
+use ApiPlatform\Metadata\Delete;
 use App\Repository\UserRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
@@ -9,35 +15,68 @@ use Doctrine\ORM\Mapping as ORM;
 use Symfony\Bridge\Doctrine\Validator\Constraints\UniqueEntity;
 use Symfony\Component\Security\Core\User\UserInterface;
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
+use Symfony\Component\Serializer\Annotation\Groups;
 
 #[ORM\Entity(repositoryClass: UserRepository::class)]
 #[UniqueEntity(fields: ['email'], message: 'There is already an account with this email')]
+#[ApiResource(
+    operations: [
+        new GetCollection(
+            security: "is_granted('ROLE_USER')",
+            normalizationContext: ['groups' => ['user:read']],
+        ),
+        new Get(
+            security: "is_granted('ROLE_USER')",
+            normalizationContext: ['groups' => ['user:read']],
+        ),
+        new Post(
+            security: "is_granted('ROLE_ADMIN')",
+            denormalizationContext: ['groups' => ['user:write']],
+            normalizationContext: ['groups' => ['user:read']],
+        ),
+        new Put(
+            security: "is_granted('ROLE_ADMIN') or object == user",
+            denormalizationContext: ['groups' => ['user:write']],
+            normalizationContext: ['groups' => ['user:read']],
+        ),
+        new Delete(
+            security: "is_granted('ROLE_ADMIN')",
+        ),
+    ],
+)]
 class User implements UserInterface, PasswordAuthenticatedUserInterface
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
+    #[Groups(['user:read', 'task:read'])]
     private ?int $id = null;
 
     #[ORM\Column(length: 128, unique: true)]
+    #[Groups(['user:read', 'user:write', 'task:read'])]
     private ?string $email = null;
 
     #[ORM\Column(length: 255)]
+    #[Groups(['user:write'])]
     private ?string $password = null;
 
     #[ORM\Column(length: 128)]
+    #[Groups(['user:read', 'user:write', 'task:read'])]
     private ?string $name = null;
 
     #[ORM\Column(type: 'json')]
+    #[Groups(['user:read', 'user:write'])]
     private array $roles = [];
 
     /**
      * @var Collection<int, Task>
      */
     #[ORM\ManyToMany(targetEntity: Task::class, mappedBy: 'assignedUsers')]
+    #[Groups(['user:read'])]
     private Collection $assignedTasks;
 
     #[ORM\Column]
+    #[Groups(['user:read'])]
     private bool $isVerified = false;
 
     public function __construct()

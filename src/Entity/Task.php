@@ -2,40 +2,79 @@
 
 namespace App\Entity;
 
+use ApiPlatform\Metadata\ApiResource;
+use ApiPlatform\Metadata\Get;
+use ApiPlatform\Metadata\GetCollection;
+use ApiPlatform\Metadata\Post;
+use ApiPlatform\Metadata\Put;
+use ApiPlatform\Metadata\Delete;
 use App\Repository\TaskRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Serializer\Annotation\Groups;
 
 #[ORM\Entity(repositoryClass: TaskRepository::class)]
+#[ApiResource(
+    operations: [
+        new GetCollection(
+            security: "is_granted('ROLE_USER')",
+            normalizationContext: ['groups' => ['task:read']],
+        ),
+        new Post(
+            security: "is_granted('ROLE_USER')",
+            denormalizationContext: ['groups' => ['task:write']],
+            normalizationContext: ['groups' => ['task:read']],
+        ),
+        new Get(
+            security: "is_granted('ROLE_USER')",
+            normalizationContext: ['groups' => ['task:read']],
+        ),
+        new Put(
+            security: "is_granted('ROLE_USER')",
+            denormalizationContext: ['groups' => ['task:write']],
+            normalizationContext: ['groups' => ['task:read']],
+        ),
+        new Delete(
+            security: "is_granted('ROLE_USER')",
+        ),
+    ],
+)]
 class Task
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
+    #[Groups(['task:read'])]
     private ?int $id = null;
 
     #[ORM\Column(length: 255)]
+    #[Groups(['task:read', 'task:write'])]
     private ?string $title = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
+    #[Groups(['task:read', 'task:write'])]
     private ?string $description = null;
 
     #[ORM\Column(length: 20)]
+    #[Groups(['task:read', 'task:write'])]
     private ?string $status = null;
 
     /**
      * @var Collection<int, User>
      */
     #[ORM\ManyToMany(targetEntity: User::class, inversedBy: 'assignedTasks')]
+    #[Groups(['task:read', 'task:write'])]
     private Collection $assignedUsers;
 
     #[ORM\Column(type: Types::DATETIME_MUTABLE, nullable: true)]
+    #[Groups(['task:read', 'task:write'])]
     private ?\DateTimeInterface $dueDate = null;
 
     #[ORM\ManyToOne(targetEntity: User::class)]
     #[ORM\JoinColumn(nullable: true)]
+    #[Groups(['task:read'])]
     private ?User $createdBy = null;
 
     public function __construct()
